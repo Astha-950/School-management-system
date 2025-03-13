@@ -1,39 +1,57 @@
 const SchoolModel = require("../models/schoolModel");
-const isValidCoordinates = require("is-valid-coordinates");
+
+const isValidLatLon = (lat, lon) => {
+  return (
+    typeof lat === "number" &&
+    typeof lon === "number" &&
+    !isNaN(lat) &&
+    !isNaN(lon) &&
+    lat >= -90 &&
+    lat <= 90 &&
+    lon >= -180 &&
+    lon <= 180
+  );
+};
 
 const addSchool = async (req, res) => {
   try {
-    const { name, address, latitude, longitude } = req.body;
+    let { name, address, latitude, longitude } = req.body;
 
-    // Validation of input fields  
+    // Trim values
+    name = name?.trim();
+    address = address?.trim();
+
+    // Validate required fields
     if (!name || !address || latitude === undefined || longitude === undefined) {
       return res.status(400).json({ message: "All fields are required" });
     }
 
-     
-    if (!/^[a-zA-Z\s'&-]{2,255}$/.test(name.trim())) {
+    // Validate School Name
+    if (!/^[a-zA-Z\s'&-]{2,255}$/.test(name)) {
       return res.status(400).json({
-        message: "Invalid school name format. Only letters, spaces, and special characters like ' & -",
+        message: "Invalid school name format. Only letters, spaces, and special characters like ' & - are allowed.",
       });
     }
 
-    
-    if (!/^[a-zA-Z0-9\s,.-]{5,255}$/.test(address.trim())) {
+    // Validate Address
+    if (!/^[a-zA-Z0-9\s,.-]{5,255}$/.test(address)) {
       return res.status(400).json({
-        message: "Invalid address format. Only letters, numbers, spaces, commas, periods, and dashes",
+        message: "Invalid address format. Only letters, numbers, spaces, commas, periods, and dashes are allowed.",
       });
     }
 
-    
+    // Parse and Validate Latitude & Longitude
     const lat = parseFloat(latitude);
     const lon = parseFloat(longitude);
 
-    if (!isValidCoordinates(lat, lon)) {
+    console.log("Latitude:", lat, "Longitude:", lon);
+
+    if (!isValidLatLon(lat, lon)) {
       return res.status(400).json({ message: "Invalid latitude or longitude" });
     }
 
-    //  checking for duplicate entry 
-    const existingSchool = await SchoolModel.getSchoolByAddress(address.trim());
+    // Check for Duplicate School by Address
+    const existingSchool = await SchoolModel.getSchoolByAddress(address);
 
     if (existingSchool) {
       return res.status(400).json({
@@ -41,8 +59,8 @@ const addSchool = async (req, res) => {
       });
     }
 
-    //   inserting the new school into the database
-    const result = await SchoolModel.addSchool(name.trim(), address.trim(), lat, lon);
+    // Insert into Database
+    const result = await SchoolModel.addSchool(name, address, lat, lon);
 
     return res.status(201).json({
       message: "School added successfully",
